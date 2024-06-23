@@ -1,10 +1,25 @@
 import telebot
 import os
+from docx2pdf import convert
 
 print("Бот запущен и работает!")
 
 TOKEN = '7493817602:AAH3v5NCH9LXxDzOZAj645wyZ3l2PZV_IQQ'
 bot = telebot.TeleBot(TOKEN)
+
+def file_convert_docx_pdf(file_path):
+    # Создаем директорию для PDF файлов, если она не существует
+    convert_dir = os.path.join(os.path.dirname(file_path), 'convert_pdf')
+    if not os.path.exists(convert_dir):
+        os.makedirs(convert_dir)
+
+    # Формируем путь для сохранения PDF файла
+    pdf_file_path = os.path.join(convert_dir, os.path.basename(file_path).replace('.docx', '.pdf'))
+
+    # Конвертируем файл
+    convert(file_path, pdf_file_path)
+
+    return pdf_file_path
 
 @bot.message_handler(content_types=['document'])
 def handle_docs_photo(message):
@@ -23,7 +38,17 @@ def handle_docs_photo(message):
         with open(src, 'wb') as new_file:
             new_file.write(downloaded_file)
 
-        bot.reply_to(message, "Пожалуй, я сохраню это")
+        # Проверка и конвертация файла, если это .docx
+        if src.endswith('.docx'):
+            pdf_file_path = file_convert_docx_pdf(src)
+            if os.path.exists(pdf_file_path):
+                with open(pdf_file_path, 'rb') as pdf_file:
+                    bot.send_document(chat_id, pdf_file)
+            else:
+                bot.reply_to(message, "Не удалось конвертировать файл в PDF.")
+        else:
+            bot.reply_to(message, "Пожалуй, я сохраню это")
+
     except Exception as e:
         bot.reply_to(message, str(e))
 
